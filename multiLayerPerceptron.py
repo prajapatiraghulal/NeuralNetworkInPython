@@ -1,75 +1,88 @@
 import numpy as np
-import perceptron
 
-class multiLayerPerceptron:
-    '''  a multilayer perceptron class that uses the perceptron class above
-    attributes:
-        layers:  a python list with no. of elements per layer.
-        bias:   the bias term . the same bias is used for all neurons.
-        eta:    the learning rate.  '''
 
-    def __init__(self, layers, bias=1.0):
-        ''' return a new MLP object with the specified parameters. '''
+class Perceptron:
+    """A single neuron with the sigmoid activation function.
+       Attributes:
+          inputs: The number of inputs in the perceptron, not counting the bias.
+          bias:   The bias term. By defaul it's 1.0."""
 
-        self.layers = np.array(layers, dtype = object)
+    def __init__(self, inputs, bias=1.0):
+        """Return a new Perceptron object with the specified number of inputs (+1 for the bias)."""
+        self.weights = (np.random.rand(inputs + 1) * 2) - 1
         self.bias = bias
-        self.network = []   # the list of lists of neurons
-        self.values = []    # the list of lists of output values
-
-        for i in range(len(self.layers)):
-            self.network.append([])
-            self.values.append([])
-
-            # initialize every value with zero in every perceptron
-            for j in range(self.layers[i]):
-                self.values[i].append(0.0)
-
-            #input layer doesn't have neurons so i>0
-
-            if i > 0:
-                for j in range(self.layers[i]):
-                    self.network.append(perceptron(input=self.layers[i-1], bias=self.bias))
-
-            # convert list to np.array of dtype = object
-            self.network = np.array([np.array(x) for x in self.network], dtype=object)
-            self.values = np.array([np.array(x) for x in self.values], dtype=object)
-
-
-    def set_weights(self, w_init):
-        '''set the weights.
-            w_init is a list of lists with the weights for all but the input layer left'''
-
-        for i in range(len(w_init)):
-            for j in range(len(w_init[i])):
-                self.network[i+1][j].set_weights(w_init[i][j])  # since network[0] is not present as input has no neurons
-    def printWeights(self):
-        print()
-        for i in range(1,len(self.network)):
-            for j in range(self.layers[i]):
-                print("layer", i+1, "neuron", j, self.network[i][j].weights)
 
     def run(self, x):
-        '''feed a simple x into the multiplayer perceptron.'''
-        x = np.array(x, dtype=object)
-        self.values[0]= x
-        for i in range(1,len(self.network)):
+        """Run the perceptron. x is a python list with the input values."""
+        sum = np.dot(np.append(x, self.bias), self.weights)
+        return self.sigmoid(sum)
+
+    def set_weights(self, w_init):
+        """Set the weights. w_init is a python list with the weights."""
+        self.weights = np.array(w_init)
+
+    def sigmoid(self, x):
+        """Evaluate the sigmoid function for the floating point input x."""
+        return 1 / (1 + np.exp(-x))
+
+
+class MultiLayerPerceptron:
+    """A multilayer perceptron class that uses the Perceptron class above.
+       Attributes:
+          layers:  A python list with the number of elements per layer.
+          bias:    The bias term. The same bias is used for all neurons.
+          eta:     The learning rate."""
+
+    def __init__(self, layers, bias=1.0):
+        """Return a new MLP object with the specified parameters."""
+        self.layers = np.array(layers, dtype=object)
+        self.bias = bias
+        self.network = []  # The list of lists of neurons
+        self.values = []  # The list of lists of output values
+
+        for i in range(len(self.layers)):
+            self.values.append([])
+            self.network.append([])
+            self.values[i] = [0.0 for j in range(self.layers[i])]
+            if i > 0:  # network[0] is the input layer, so it has no neurons
+                for j in range(self.layers[i]):
+                    self.network[i].append(Perceptron(inputs=self.layers[i - 1], bias=self.bias))
+
+        self.net = np.array([np.array(x) for x in self.network], dtype=object)
+        self.val = np.array([np.array(x) for x in self.values], dtype=object)
+
+    def set_weights(self, w_init):
+        """Set the weights.
+           w_init is a list of lists with the weights for all but the input layer."""
+        for i in range(len(w_init)):
+            for j in range(len(w_init[i])):
+                self.net[i + 1][j].set_weights(w_init[i][j])
+
+    def printWeights(self):
+        print()
+        for i in range(1, len(self.net)):
             for j in range(self.layers[i]):
-                self.values[i][j] = self.network[i][j].run(self.values[i-1])
-        return self.values[-1]
+                print("Layer", i + 1, "Neuron", j, self.net[i][j].weights)
+        print()
+
+    def run(self, x):
+        """Feed a sample x into the MultiLayer Perceptron."""
+        x = np.array(x, dtype=object)
+        self.val[0] = x
+        for i in range(1, len(self.net)):
+            for j in range(self.layers[i]):
+                self.val[i][j] = self.net[i][j].run(self.val[i - 1])
+        return self.val[-1]
 
 
-
-#testing codes
-
-mlp = multiLayerPerceptron(layers=[2,2,1]) #mlp
-mlp.set_weights([[[-10,-10,15],[15,15,-10]],[[10,10,-15]]])
+# test code
+mlp = MultiLayerPerceptron(layers=[2, 2, 1])  # mlp
+mlp.set_weights([[[-10, -10, 15], [15, 15, -10]], [[10, 10, -15]]])
 mlp.printWeights()
-print("mlp: ")
-print("0 0 = {0:.10f}".format(mlp.run([0,0])[0]))
-print("0 1 = {0:.10f}".format(mlp.run([0,1])[0]))
-print("1 0 = {0:.10f}".format(mlp.run([1,0])[0]))
-print("1 1 = {0:.10f}".format(mlp.run([1,1])[0]))
-
-
+print("MLP:")
+print("0 0 = {0:.10f}".format(mlp.run([0, 0])[0]))
+print("0 1 = {0:.10f}".format(mlp.run([0, 1])[0]))
+print("1 0 = {0:.10f}".format(mlp.run([1, 0])[0]))
+print("1 1 = {0:.10f}".format(mlp.run([1, 1])[0]))
 
 
